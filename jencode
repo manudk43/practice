@@ -1,0 +1,79 @@
+pipeline {
+    agent any
+
+environment {
+  PATH = "/opt/maven/bin:$PATH"
+}
+    stages {
+        stage('Hello') {
+            steps {
+                echo 'Hello World'
+            }
+        }
+        stage('hi'){
+            steps{
+                echo 'hi good morning'
+            }
+        }
+        stage('helloworld'){
+            steps{
+                echo 'hello world happy morning'
+            }
+        }
+        stage('checkout'){
+            steps{
+                checkout(
+                    [$class:
+                     'GitSCM', 
+                     branches: 
+                     [[name: '*/master']],
+                      extensions: [], 
+                      userRemoteConfigs:
+                       [[credentialsId:
+                        'github', url: 'https://github.com/manudk43/pay-bus.git']]
+                        ]
+                        )
+            }
+        }
+        stage('check'){
+            steps {
+                checkout(
+                    [$class: 'GitSCM',
+                     branches: 
+                     [[name: '*/master']],
+                      extensions: [], 
+                      userRemoteConfigs: 
+                      [[credentialsId: 
+                      'github', 
+                      url: 'https://github.com/manudk43/hello-world-war.git']]
+                      ]
+                      )
+            }
+        }
+        stage('build'){
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('artifactory'){
+            steps {
+                script{
+                    def mavenPom = readMavenPom file: 'pom.xml'
+           nexusArtifactUploader artifacts: [[artifactId: 'hello', classifier: '', file: "target/hello-world-war-${mavenPom.version}.war", type: 'war']], credentialsId: 'nexus', groupId: 'com.efsavage', nexusUrl: '15.207.84.164:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'myappnex', version: "${mavenPom.version}"
+                }
+            }
+        }
+        stage('deploy'){
+            steps {
+                deploy adapters: 
+                [tomcat8
+                (credentialsId: 'tommy', 
+                path: '', 
+                url: 'http://3.111.147.92:8080/')
+                ],
+                 contextPath: 'hello-world',
+                  war: '**/target/*.war'
+            }
+        }
+    }
+}
